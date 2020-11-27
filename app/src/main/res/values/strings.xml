@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">lab5</string>
+    <string name="button">Button</string>
+    <string name="button_pressed">Button pressed</string>
+    <string name="about">about</string>
+    <string name="to_first">to_first</string>
+    <string name="to_second">to_second</string>
+    <string name="to_third">to_third</string>
+    <string name="to_about">to_about</string>
+</resources>
