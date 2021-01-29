@@ -43,33 +43,34 @@ ___
 #### Задача 2. Тестирование навигации
 Возьмите приложение из Лаб №3 о навигации (любое из решений). Напишите UI тесты, проверяющие навигацию между 4мя исходными Activity/Fragment (1-2-3-About). 
 
-Для тестирования был выбран первый вариант реализации графа навигации между экранами приложения (с использованием startAcivityForResult). После этого был написан ряд тестов:
-Первый набор направлен на проверку текущего экрана путем вызова метода isDisplayed к элементам, расположеным только на конкретном экране.
+Для тестирования был выбран первый вариант реализации графа навигации между экранами приложения (с использованием startAcivityForResult). После этого был написан ряд тестов и вспомогательных функций. Последние направлены на проверку текущего экрана путем вызова метода isDisplayed к элементам, расположеным только на конкретном экране, а также перехода в About. Эти функции используются во всех тестах.
 ```
-    @Test
-    fun isFirst() {
+    private fun isFirst() {
         onView(withId(R.id.to_2_button)).check(matches(isDisplayed()))
     }
 
-    @Test
-    fun isSecond() {
+    private fun isSecond() {
         onView(withId(R.id.to_1_button)).check(matches(isDisplayed()))
         onView(withId(R.id.to_3_button)).check(matches(isDisplayed()))
     }
 
-    @Test
-    fun isThird() {
+    private fun isThird() {
         onView(withId(R.id.to_1_from_3)).check(matches(isDisplayed()))
         onView(withId(R.id.to_2_from_3)).check(matches(isDisplayed()))
     }
 
-    @Test
-    fun isAbout() {
+    private fun isAbout() {
         onView(withId(R.id.about)).check(matches(isDisplayed()))
+    }
+
+    private fun toAbout() {
+        openActionBarOverflowOrOptionsMenu(getInstrumentation().targetContext)
+        onView(withText(R.string.to_about)).perform(click())
+        isAbout()
     }
 ```
 
-Второй набор тестов нацелен на проверку перехода между Activity путем нажатия соответствующих кнопок.
+Набор тестов нацелен на проверку перехода между Activity путем нажатия соответствующих кнопок.
 ```
     @Test
     fun firstToSecond() {
@@ -101,30 +102,46 @@ ___
 
 ```
 
-Плюс написан еще один тест, выбирающий случайное число от 1 до 3, переходящий на соответствующий экран и открывающий через options menu активити About.
+Плюс написан еще один тест, осуществляющий последовательный перход из всех 3 активити в окно About с целью проверки работоспособности Options menu на каждом экране приложения.
 ```
-    @Test
-    fun toAbout() {
-        when ((1..3).shuffled().first()) {
-            1 -> isFirst()
-            2 -> firstToSecond()
-            3 -> secondToThird()
-        }
+@Test
+    fun toAboutTransition() {
+        for (i in 1..3) {
+            when (i) {
+                1 -> isFirst()
+                2 -> firstToSecond()
+                3 -> secondToThird()
+            }
 
-        openActionBarOverflowOrOptionsMenu(getInstrumentation().targetContext)
-        onView(withText(R.string.to_about)).perform(click())
-        isAbout()
+            toAbout()
+
+            when (i) {
+                1 -> {
+                    pressBack()
+                    isFirst()
+                }
+                2 -> {
+                    pressBack()
+                    isSecond()
+                    pressBack()
+                }
+                3 -> {
+                    pressBack()
+                    isThird()
+                }
+            }
+        }
     }
 ```
 
-Последние 2 теста сделаны для проверки глубины бэкстэка, то есть при нажатии кнопки назад из третьей активити мы должны попасть в первую, а из второй (не зависимо от того, из первой активити мы в нее перешли, или из третьей) - в первую.
+Последние 3 теста сделаны для проверки глубины бэкстэка, то есть при нажатии кнопки назад из третьей активити мы должны попасть в первую, а из второй (не зависимо от того, из первой активити мы в нее перешли, или из третьей) - в первую. Третий тест совершает серию преходов между активити приложения, заканчивающуюся на переходе в About, после чего производится проверка, что после 4 нажать кнопки Back (максимально допустимая глубина стека) будет зафиксирован выход из приложения.
 ```
     @Test
     fun backFromSecond() {
         firstToSecond()
         pressBack()
         isFirst()
-        
+
         thirdToSecond()
         pressBack()
         isFirst()
@@ -137,6 +154,27 @@ ___
         isSecond()
         pressBack()
         isFirst()
+    }
+
+    @Test
+    fun backStackValueTest() {
+        var exception = false
+
+        thirdToFirst()  //  1 -> 2 -> 3 -> 2 -> 1
+        secondToFirst() //  1 -> 2 -> 1
+        secondToThird() //  1 -> 2 -> 3
+        toAbout()
+        pressBack()
+        pressBack()
+        pressBack()
+
+        try {
+            pressBack()
+        } catch (e: NoActivityResumedException) {
+            exception = true
+        }
+
+        assertTrue(exception)
     }
 ```
 
